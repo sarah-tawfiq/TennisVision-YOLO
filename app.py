@@ -23,6 +23,7 @@ st.set_page_config(
 
 MODEL_PATH = "best.pt"
 
+
 @st.cache_resource
 def load_model():
     return YOLO(MODEL_PATH)
@@ -36,14 +37,15 @@ model = load_model()
 # ============================================================
 
 st.title("🎾 Tennis Object Detection")
+
 st.write(
-    "Upload an image or video and the YOLO11 model will detect "
-    "players and tennis balls."
+    "Upload an image or video and the YOLO11 model "
+    "will detect tennis players and tennis balls."
 )
 
 
 # ============================================================
-# SIDEBAR SETTINGS
+# SIDEBAR
 # ============================================================
 
 st.sidebar.header("Detection Settings")
@@ -57,7 +59,7 @@ confidence = st.sidebar.slider(
 )
 
 img_size = st.sidebar.selectbox(
-    "Image Size",
+    "Inference Image Size",
     [640, 960, 1280],
     index=2
 )
@@ -109,7 +111,7 @@ if input_type == "Image":
 
                 result = results[0]
 
-                # YOLO plot returns BGR
+                # YOLO returns BGR image
                 annotated_image = result.plot()
 
                 # Convert BGR → RGB
@@ -125,9 +127,9 @@ if input_type == "Image":
                 use_container_width=True
             )
 
-            # ----------------------------------------
+            # ------------------------------------------------
             # Detection Summary
-            # ----------------------------------------
+            # ------------------------------------------------
 
             st.subheader("Detection Summary")
 
@@ -144,7 +146,9 @@ if input_type == "Image":
                 for box in result.boxes:
 
                     class_id = int(box.cls[0])
+
                     class_name = result.names[class_id]
+
                     conf = float(box.conf[0])
 
                     detections.append(
@@ -172,48 +176,59 @@ else:
 
     uploaded_video = st.file_uploader(
         "Upload a tennis video",
-        type=["mp4", "avi", "mov", "mkv"]
+        type=["mp4", "mov", "avi", "mkv"]
     )
 
     if uploaded_video is not None:
 
-        if st.button("🎬 Detect Objects in Video"):
+        st.subheader("Uploaded Video")
 
-            # ----------------------------------------
+        # ----------------------------------------------------
+        # Show ORIGINAL video inside the website
+        # ----------------------------------------------------
+
+        original_video_bytes = uploaded_video.getvalue()
+
+        st.video(
+            original_video_bytes
+        )
+
+        if st.button("🎬 Run Detection on Video"):
+
+            # ------------------------------------------------
             # Save uploaded video temporarily
-            # ----------------------------------------
+            # ------------------------------------------------
 
-            input_video = tempfile.NamedTemporaryFile(
-                delete=False,
-                suffix=os.path.splitext(
-                    uploaded_video.name
-                )[1]
-            )
-
-            input_video.write(
-                uploaded_video.read()
-            )
-
-            input_video.close()
-
-            # ----------------------------------------
-            # Create output video path
-            # ----------------------------------------
-
-            output_video = tempfile.NamedTemporaryFile(
+            input_file = tempfile.NamedTemporaryFile(
                 delete=False,
                 suffix=".mp4"
             )
 
-            output_video.close()
+            input_file.write(
+                original_video_bytes
+            )
 
-            # ----------------------------------------
-            # Open input video
-            # ----------------------------------------
+            input_file.close()
+
+            input_path = input_file.name
+
+            # ------------------------------------------------
+            # Open video
+            # ------------------------------------------------
 
             cap = cv2.VideoCapture(
-                input_video.name
+                input_path
             )
+
+            if not cap.isOpened():
+
+                st.error(
+                    "Could not open the uploaded video."
+                )
+
+                os.remove(input_path)
+
+                st.stop()
 
             width = int(
                 cap.get(cv2.CAP_PROP_FRAME_WIDTH)
@@ -230,37 +245,74 @@ else:
             if fps <= 0:
                 fps = 30
 
-            # ----------------------------------------
-            # Video writer
-            # ----------------------------------------
-
-            fourcc = cv2.VideoWriter_fourcc(
-                *"mp4v"
-            )
-
-            writer = cv2.VideoWriter(
-                output_video.name,
-                fourcc,
-                fps,
-                (width, height)
-            )
-
             total_frames = int(
                 cap.get(
                     cv2.CAP_PROP_FRAME_COUNT
                 )
             )
 
+            # ------------------------------------------------
+            # Temporary output file
+            # ------------------------------------------------
+
+            output_file = tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=".mp4"
+            )
+
+            output_file.close()
+
+            output_path = output_file.name
+
+            # ------------------------------------------------
+            # H264 VideoWriter
+            # ------------------------------------------------
+
+            fourcc = cv2.VideoWriter_fourcc(
+                *"avc1"
+            )
+
+            writer = cv2.VideoWriter(
+                output_path,
+                fourcc,
+                fps,
+                (width, height)
+            )
+
+            # ------------------------------------------------
+            # Check VideoWriter
+            # ------------------------------------------------
+
+            if not writer.isOpened():
+
+                # Fallback codec
+                fourcc = cv2.VideoWriter_fourcc(
+                    *"mp4v"
+                )
+
+                writer = cv2.VideoWriter(
+                    output_path,
+                    fourcc,
+                    fps,
+                    (width, height)
+                )
+
+            # ------------------------------------------------
+            # Progress
+            # ------------------------------------------------
+
             progress_bar = st.progress(0)
+
+            status_text = st.empty()
 
             frame_count = 0
 
-            # ----------------------------------------
-            # Process video frame by frame
-            # ----------------------------------------
+            # ------------------------------------------------
+            # Process video frame-by-frame
+            # ------------------------------------------------
 
             with st.spinner(
-                "Processing video..."
+                "Running YOLO detection on video..."
             ):
 
                 while True:
@@ -269,6 +321,10 @@ else:
 
                     if not ret:
                         break
+
+                    # ----------------------------------------
+                    # YOLO prediction
+                    # ----------------------------------------
 
                     results = model.predict(
                         source=frame,
@@ -279,13 +335,25 @@ else:
 
                     result = results[0]
 
+                    # ----------------------------------------
+                    # Draw bounding boxes
+                    # ----------------------------------------
+
                     annotated_frame = result.plot()
+
+                    # ----------------------------------------
+                    # Write processed frame
+                    # ----------------------------------------
 
                     writer.write(
                         annotated_frame
                     )
 
                     frame_count += 1
+
+                    # ----------------------------------------
+                    # Update progress
+                    # ----------------------------------------
 
                     if total_frames > 0:
 
@@ -298,58 +366,71 @@ else:
                             min(progress, 1.0)
                         )
 
-            # ----------------------------------------
+                        status_text.write(
+                            f"Processing frame "
+                            f"{frame_count} / "
+                            f"{total_frames}"
+                        )
+
+            # ------------------------------------------------
             # Release resources
-            # ----------------------------------------
+            # ------------------------------------------------
+
             cap.release()
             writer.release()
 
-            progress_bar.empty()
+            progress_bar.progress(1.0)
 
-            st.success(
-                "Video processing completed!"
+            status_text.success(
+                "Video detection completed!"
             )
 
-            # Display output video
-     
-
-            st.subheader(
-                "Detection Result"
-            )
+            # ------------------------------------------------
+            # Read processed video
+            # ------------------------------------------------
 
             with open(
-                output_video.name,
+                output_path,
                 "rb"
-            ) as video_file:
+            ) as f:
 
-                video_bytes = (
-                    video_file.read()
-                )
+                processed_video = f.read()
 
-            st.video(video_bytes)
+            # ------------------------------------------------
+            # SHOW RESULT INSIDE WEBSITE
+            # ------------------------------------------------
 
-            # ----------------------------------------
+            st.subheader(
+                "🎾 Detection Result"
+            )
+
+            st.video(
+                processed_video
+            )
+
+            # ------------------------------------------------
             # Download button
-            # ----------------------------------------
+            # ------------------------------------------------
 
             st.download_button(
-                label="⬇️ Download Result Video",
-                data=video_bytes,
+                label="⬇️ Download Detection Video",
+                data=processed_video,
                 file_name="tennis_detection_result.mp4",
                 mime="video/mp4"
             )
 
-            # ----------------------------------------
+            # ------------------------------------------------
             # Cleanup
-            # ----------------------------------------
+            # ------------------------------------------------
 
             try:
+
                 os.remove(
-                    input_video.name
+                    input_path
                 )
 
                 os.remove(
-                    output_video.name
+                    output_path
                 )
 
             except Exception:
