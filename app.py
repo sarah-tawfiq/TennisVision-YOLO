@@ -40,7 +40,7 @@ model = load_model()
 # VIDEO DISPLAY FUNCTION
 # ============================================================
 
-def display_video(video_bytes, max_height="75vh"):
+def display_video(video_bytes, max_height="85vh"):
 
     video_base64 = base64.b64encode(
         video_bytes
@@ -60,7 +60,7 @@ def display_video(video_bytes, max_height="75vh"):
             controls
             playsinline
             style="
-                max-width: 100%;
+                max-width: 90%;
                 max-height: {max_height};
                 width: auto;
                 height: auto;
@@ -83,7 +83,7 @@ def display_video(video_bytes, max_height="75vh"):
 
     components.html(
         video_html,
-        height=700,
+        height=850,
         scrolling=False
     )
 
@@ -310,7 +310,7 @@ else:
 
         display_video(
             original_video_bytes,
-            max_height="75vh"
+            max_height="85vh"
         )
 
         # ====================================================
@@ -612,7 +612,7 @@ else:
 
                 # --------------------------------------------
                 # Preserve dimensions while ensuring
-                # even dimensions required by yuv420p
+                # even dimensions for yuv420p
                 # --------------------------------------------
 
                 "-vf",
@@ -708,12 +708,12 @@ else:
             )
 
             # ------------------------------------------------
-            # ONLY DETECTION VIDEO HERE
+            # ONLY DETECTION VIDEO
             # ------------------------------------------------
 
             display_video(
                 processed_video,
-                max_height="75vh"
+                max_height="85vh"
             )
 
             # =================================================
