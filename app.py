@@ -6,6 +6,8 @@ import os
 import cv2
 import subprocess
 import imageio_ffmpeg
+import base64
+import streamlit.components.v1 as components
 
 
 # ============================================================
@@ -35,6 +37,57 @@ model = load_model()
 
 
 # ============================================================
+# VIDEO DISPLAY FUNCTION
+# ============================================================
+
+def display_video(video_bytes, max_height="70vh"):
+
+    video_base64 = base64.b64encode(
+        video_bytes
+    ).decode("utf-8")
+
+    video_html = f"""
+    <div style="
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+    ">
+
+        <video
+            controls
+            playsinline
+            style="
+                max-width: 100%;
+                max-height: {max_height};
+                width: auto;
+                height: auto;
+                object-fit: contain;
+                display: block;
+            "
+        >
+
+            <source
+                src="data:video/mp4;base64,{video_base64}"
+                type="video/mp4"
+            >
+
+            Your browser does not support the video tag.
+
+        </video>
+
+    </div>
+    """
+
+    components.html(
+        video_html,
+        height=650,
+        scrolling=False
+    )
+
+
+# ============================================================
 # TITLE
 # ============================================================
 
@@ -47,7 +100,7 @@ st.write(
 
 
 # ============================================================
-# SIDEBAR — DETECTION SETTINGS
+# SIDEBAR
 # ============================================================
 
 st.sidebar.header("Detection Settings")
@@ -70,7 +123,7 @@ img_size = st.sidebar.selectbox(
 
 
 # ============================================================
-# SELECT INPUT TYPE
+# INPUT TYPE
 # ============================================================
 
 input_type = st.radio(
@@ -85,10 +138,6 @@ input_type = st.radio(
 # ============================================================
 
 if input_type == "Image":
-
-    # --------------------------------------------------------
-    # Upload image
-    # --------------------------------------------------------
 
     uploaded_file = st.file_uploader(
         "Upload a tennis image",
@@ -112,7 +161,7 @@ if input_type == "Image":
 
 
         # ----------------------------------------------------
-        # Display original image
+        # Original image
         # ----------------------------------------------------
 
         st.subheader(
@@ -137,10 +186,6 @@ if input_type == "Image":
                 "Running YOLO detection..."
             ):
 
-                # --------------------------------------------
-                # YOLO prediction
-                # --------------------------------------------
-
                 results = model.predict(
                     source=image,
                     conf=confidence,
@@ -159,7 +204,7 @@ if input_type == "Image":
 
 
                 # --------------------------------------------
-                # Convert BGR → RGB
+                # BGR → RGB
                 # --------------------------------------------
 
                 annotated_image = cv2.cvtColor(
@@ -169,7 +214,7 @@ if input_type == "Image":
 
 
             # ------------------------------------------------
-            # Detection result
+            # Result
             # ------------------------------------------------
 
             st.subheader(
@@ -196,7 +241,6 @@ if input_type == "Image":
                 st.warning(
                     "No objects were detected."
                 )
-
 
             else:
 
@@ -229,10 +273,6 @@ if input_type == "Image":
                     )
 
 
-                # --------------------------------------------
-                # Show detection table
-                # --------------------------------------------
-
                 st.dataframe(
                     detections,
                     use_container_width=True
@@ -250,10 +290,6 @@ if input_type == "Image":
 # ============================================================
 
 else:
-
-    # --------------------------------------------------------
-    # Upload video
-    # --------------------------------------------------------
 
     uploaded_video = st.file_uploader(
         "Upload a tennis video",
@@ -278,29 +314,30 @@ else:
 
 
         # ====================================================
-        # DISPLAY ORIGINAL VIDEO
+        # SHOW ORIGINAL VIDEO
         # ====================================================
 
         st.subheader(
             "🎥 Uploaded Video"
         )
 
-        st.video(
+
+        display_video(
             original_video_bytes
         )
 
 
         # ====================================================
-        # DETECTION BUTTON
+        # RUN DETECTION
         # ====================================================
 
         if st.button(
             "🎬 Run Detection on Video"
         ):
 
-            # ------------------------------------------------
-            # Get original extension
-            # ------------------------------------------------
+            # =================================================
+            # ORIGINAL FILE EXTENSION
+            # =================================================
 
             original_extension = os.path.splitext(
                 uploaded_video.name
@@ -312,7 +349,7 @@ else:
 
 
             # =================================================
-            # SAVE INPUT VIDEO TEMPORARILY
+            # SAVE INPUT VIDEO
             # =================================================
 
             input_file = tempfile.NamedTemporaryFile(
@@ -325,6 +362,7 @@ else:
                 original_video_bytes
             )
 
+
             input_file.close()
 
 
@@ -334,7 +372,7 @@ else:
 
 
             # =================================================
-            # OPEN INPUT VIDEO
+            # OPEN VIDEO
             # =================================================
 
             cap = cv2.VideoCapture(
@@ -390,17 +428,437 @@ else:
 
 
             # =================================================
-            # DISPLAY VIDEO INFORMATION
+            # VIDEO INFORMATION
             # =================================================
 
             st.info(
-                f"Original video size: "
-                f"{width} × {height}  |  "
-                f"FPS: {fps:.2f}  |  "
+                f"Original video: "
+                f"{width} × {height} | "
+                f"FPS: {fps:.2f} | "
                 f"Frames: {total_frames}"
             )
 
 
+            # =================================================
+            # CREATE RAW OUTPUT
+            # =================================================
+
+            raw_output = tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=".mp4"
+            )
+
+
+            raw_output.close()
+
+
+            raw_output_path = (
+                raw_output.name
+            )
+
+
+            # =================================================
+            # VIDEO WRITER
+            # =================================================
+
+            fourcc = cv2.VideoWriter_fourcc(
+                *"mp4v"
+            )
+
+
+            writer = cv2.VideoWriter(
+                raw_output_path,
+                fourcc,
+                fps,
+                (width, height)
+            )
+
+
+            if not writer.isOpened():
+
+                st.error(
+                    "Could not create output video."
+                )
+
+                cap.release()
+
+
+                try:
+                    os.remove(input_path)
+                    os.remove(raw_output_path)
+                except Exception:
+                    pass
+
+
+                st.stop()
+
+
+            # =================================================
+            # PROGRESS BAR
+            # =================================================
+
+            progress_bar = st.progress(
+                0
+            )
+
+
+            status_text = st.empty()
+
+
+            frame_count = 0
+
+
+            # =================================================
+            # PROCESS VIDEO
+            # =================================================
+
+            with st.spinner(
+                "Running YOLO detection..."
+            ):
+
+                while True:
+
+                    # -----------------------------------------
+                    # Read frame
+                    # -----------------------------------------
+
+                    ret, frame = cap.read()
+
+
+                    if not ret:
+                        break
+
+
+                    # -----------------------------------------
+                    # YOLO
+                    # -----------------------------------------
+
+                    results = model.predict(
+                        source=frame,
+                        conf=confidence,
+                        imgsz=img_size,
+                        verbose=False
+                    )
+
+
+                    result = results[0]
+
+
+                    # -----------------------------------------
+                    # Draw detections
+                    # -----------------------------------------
+
+                    annotated_frame = (
+                        result.plot()
+                    )
+
+
+                    # -----------------------------------------
+                    # Preserve ORIGINAL dimensions
+                    # -----------------------------------------
+
+                    if (
+                        annotated_frame.shape[1]
+                        != width
+                        or
+                        annotated_frame.shape[0]
+                        != height
+                    ):
+
+                        annotated_frame = cv2.resize(
+                            annotated_frame,
+                            (width, height),
+                            interpolation=cv2.INTER_LINEAR
+                        )
+
+
+                    # -----------------------------------------
+                    # Write frame
+                    # -----------------------------------------
+
+                    writer.write(
+                        annotated_frame
+                    )
+
+
+                    # -----------------------------------------
+                    # Progress
+                    # -----------------------------------------
+
+                    frame_count += 1
+
+
+                    if total_frames > 0:
+
+                        progress = (
+                            frame_count
+                            / total_frames
+                        )
+
+
+                        progress_bar.progress(
+                            min(
+                                progress,
+                                1.0
+                            )
+                        )
+
+
+                        status_text.write(
+                            f"Processing frame "
+                            f"{frame_count} / "
+                            f"{total_frames}"
+                        )
+
+
+            # =================================================
+            # RELEASE
+            # =================================================
+
+            cap.release()
+
+            writer.release()
+
+
+            progress_bar.progress(
+                1.0
+            )
+
+
+            status_text.success(
+                "YOLO detection completed!"
+            )
+
+
+            # =================================================
+            # FFMPEG CONVERSION
+            # =================================================
+
+            st.info(
+                "Preparing detection video "
+                "for web playback..."
+            )
+
+
+            final_output = tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=".mp4"
+            )
+
+
+            final_output.close()
+
+
+            final_output_path = (
+                final_output.name
+            )
+
+
+            # =================================================
+            # GET FFMPEG
+            # =================================================
+
+            ffmpeg_path = (
+                imageio_ffmpeg.get_ffmpeg_exe()
+            )
+
+
+            # =================================================
+            # FFMPEG COMMAND
+            # =================================================
+
+            command = [
+
+                ffmpeg_path,
+
+                "-y",
+
+                "-i",
+                raw_output_path,
+
+                # --------------------------------------------
+                # Keep original dimensions
+                # --------------------------------------------
+
+                "-vf",
+                (
+                    "scale="
+                    "trunc(iw/2)*2:"
+                    "trunc(ih/2)*2"
+                ),
+
+                # --------------------------------------------
+                # H264
+                # --------------------------------------------
+
+                "-c:v",
+                "libx264",
+
+                # --------------------------------------------
+                # Browser compatible
+                # --------------------------------------------
+
+                "-pix_fmt",
+                "yuv420p",
+
+                # --------------------------------------------
+                # Web streaming
+                # --------------------------------------------
+
+                "-movflags",
+                "+faststart",
+
+                # --------------------------------------------
+                # FPS
+                # --------------------------------------------
+
+                "-r",
+                str(fps),
+
+                final_output_path
+            ]
+
+
+            # =================================================
+            # RUN FFMPEG
+            # =================================================
+
+            process = subprocess.run(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+
+
+            # =================================================
+            # CHECK FFMPEG
+            # =================================================
+
+            if process.returncode != 0:
+
+                st.error(
+                    "Video conversion failed."
+                )
+
+
+                st.code(
+                    process.stderr.decode(
+                        errors="ignore"
+                    )
+                )
+
+
+                try:
+
+                    os.remove(
+                        input_path
+                    )
+
+                    os.remove(
+                        raw_output_path
+                    )
+
+                    os.remove(
+                        final_output_path
+                    )
+
+                except Exception:
+                    pass
+
+
+                st.stop()
+
+
+            # =================================================
+            # READ PROCESSED VIDEO
+            # =================================================
+
+            with open(
+                final_output_path,
+                "rb"
+            ) as f:
+
+                processed_video = (
+                    f.read()
+                )
+
+
+            # =================================================
+            # DETECTION RESULT
+            # =================================================
+
+            st.subheader(
+                "🎾 Detection Result"
+            )
+
+
+            # =================================================
+            # SHOW ORIGINAL VIDEO AGAIN
+            # =================================================
+
+            st.markdown(
+                "### 🎥 Original Video"
+            )
+
+
+            display_video(
+                original_video_bytes
+            )
+
+
+            # =================================================
+            # SHOW DETECTION VIDEO
+            # =================================================
+
+            st.markdown(
+                "### 🎾 Detection Video"
+            )
+
+
+            display_video(
+                processed_video
+            )
+
+
+            # =================================================
+            # DOWNLOAD
+            # =================================================
+
+            st.download_button(
+                label=(
+                    "⬇️ Download Detection Video"
+                ),
+
+                data=processed_video,
+
+                file_name=(
+                    "tennis_detection_result.mp4"
+                ),
+
+                mime="video/mp4"
+            )
+
+
+            # =================================================
+            # CLEANUP
+            # =================================================
+
+            try:
+
+                os.remove(
+                    input_path
+                )
+
+                os.remove(
+                    raw_output_path
+                )
+
+                os.remove(
+                    final_output_path
+                )
+
+            except Exception:
+                pass
             # =================================================
             # CREATE RAW OUTPUT VIDEO
             # =================================================
