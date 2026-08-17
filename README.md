@@ -470,13 +470,4 @@ The trained `best.pt` model was integrated into a Streamlit application for imag
 
 ## 👩‍💻 Author
 
-*[Your name here]*
-
-Computer Science & Artificial Intelligence
-DOTPY Academy — DSA 2026
-
-## ⭐ Project
-
-Tennis Ball & Player Detection
-
-Computer Vision Track — YOLO11 Object Detection
+Sarah Tawfiq
