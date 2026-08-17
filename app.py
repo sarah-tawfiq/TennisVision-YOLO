@@ -40,7 +40,7 @@ model = load_model()
 # VIDEO DISPLAY FUNCTION
 # ============================================================
 
-def display_video(video_bytes, max_height="70vh"):
+def display_video(video_bytes, max_height="75vh"):
 
     video_base64 = base64.b64encode(
         video_bytes
@@ -53,6 +53,7 @@ def display_video(video_bytes, max_height="70vh"):
         justify-content: center;
         align-items: center;
         overflow: hidden;
+        margin-bottom: 10px;
     ">
 
         <video
@@ -82,7 +83,7 @@ def display_video(video_bytes, max_height="70vh"):
 
     components.html(
         video_html,
-        height=650,
+        height=700,
         scrolling=False
     )
 
@@ -148,7 +149,6 @@ if input_type == "Image":
         ]
     )
 
-
     if uploaded_file is not None:
 
         # ----------------------------------------------------
@@ -158,7 +158,6 @@ if input_type == "Image":
         image = Image.open(
             uploaded_file
         )
-
 
         # ----------------------------------------------------
         # Original image
@@ -172,7 +171,6 @@ if input_type == "Image":
             image,
             use_container_width=True
         )
-
 
         # ----------------------------------------------------
         # Detection button
@@ -195,13 +193,11 @@ if input_type == "Image":
 
                 result = results[0]
 
-
                 # --------------------------------------------
                 # Draw detections
                 # --------------------------------------------
 
                 annotated_image = result.plot()
-
 
                 # --------------------------------------------
                 # BGR → RGB
@@ -212,9 +208,8 @@ if input_type == "Image":
                     cv2.COLOR_BGR2RGB
                 )
 
-
             # ------------------------------------------------
-            # Result
+            # Detection result
             # ------------------------------------------------
 
             st.subheader(
@@ -226,7 +221,6 @@ if input_type == "Image":
                 use_container_width=True
             )
 
-
             # ------------------------------------------------
             # Detection summary
             # ------------------------------------------------
@@ -234,7 +228,6 @@ if input_type == "Image":
             st.subheader(
                 "📊 Detection Summary"
             )
-
 
             if len(result.boxes) == 0:
 
@@ -245,7 +238,6 @@ if input_type == "Image":
             else:
 
                 detections = []
-
 
                 for box in result.boxes:
 
@@ -261,7 +253,6 @@ if input_type == "Image":
                         box.conf[0]
                     )
 
-
                     detections.append(
                         {
                             "Class": class_name,
@@ -272,12 +263,10 @@ if input_type == "Image":
                         }
                     )
 
-
                 st.dataframe(
                     detections,
                     use_container_width=True
                 )
-
 
                 st.success(
                     f"{len(result.boxes)} "
@@ -301,7 +290,6 @@ else:
         ]
     )
 
-
     if uploaded_video is not None:
 
         # ====================================================
@@ -312,23 +300,21 @@ else:
             uploaded_video.getvalue()
         )
 
-
         # ====================================================
-        # SHOW ORIGINAL VIDEO
+        # SHOW ORIGINAL VIDEO — ONCE
         # ====================================================
 
         st.subheader(
             "🎥 Uploaded Video"
         )
 
-
         display_video(
-            original_video_bytes
+            original_video_bytes,
+            max_height="75vh"
         )
 
-
         # ====================================================
-        # RUN DETECTION
+        # DETECTION BUTTON
         # ====================================================
 
         if st.button(
@@ -336,17 +322,15 @@ else:
         ):
 
             # =================================================
-            # ORIGINAL FILE EXTENSION
+            # GET ORIGINAL EXTENSION
             # =================================================
 
             original_extension = os.path.splitext(
                 uploaded_video.name
             )[1]
 
-
             if original_extension == "":
                 original_extension = ".mp4"
-
 
             # =================================================
             # SAVE INPUT VIDEO
@@ -357,19 +341,13 @@ else:
                 suffix=original_extension
             )
 
-
             input_file.write(
                 original_video_bytes
             )
 
-
             input_file.close()
 
-
-            input_path = (
-                input_file.name
-            )
-
+            input_path = input_file.name
 
             # =================================================
             # OPEN VIDEO
@@ -379,19 +357,18 @@ else:
                 input_path
             )
 
-
             if not cap.isOpened():
 
                 st.error(
                     "Could not open the uploaded video."
                 )
 
-                os.remove(
-                    input_path
-                )
+                try:
+                    os.remove(input_path)
+                except Exception:
+                    pass
 
                 st.stop()
-
 
             # =================================================
             # GET ORIGINAL VIDEO INFORMATION
@@ -403,29 +380,24 @@ else:
                 )
             )
 
-
             height = int(
                 cap.get(
                     cv2.CAP_PROP_FRAME_HEIGHT
                 )
             )
 
-
             fps = cap.get(
                 cv2.CAP_PROP_FPS
             )
 
-
             if fps <= 0:
                 fps = 30
-
 
             total_frames = int(
                 cap.get(
                     cv2.CAP_PROP_FRAME_COUNT
                 )
             )
-
 
             # =================================================
             # VIDEO INFORMATION
@@ -438,7 +410,6 @@ else:
                 f"Frames: {total_frames}"
             )
 
-
             # =================================================
             # CREATE RAW OUTPUT
             # =================================================
@@ -448,14 +419,9 @@ else:
                 suffix=".mp4"
             )
 
-
             raw_output.close()
 
-
-            raw_output_path = (
-                raw_output.name
-            )
-
+            raw_output_path = raw_output.name
 
             # =================================================
             # VIDEO WRITER
@@ -465,14 +431,12 @@ else:
                 *"mp4v"
             )
 
-
             writer = cv2.VideoWriter(
                 raw_output_path,
                 fourcc,
                 fps,
                 (width, height)
             )
-
 
             if not writer.isOpened():
 
@@ -482,16 +446,13 @@ else:
 
                 cap.release()
 
-
                 try:
                     os.remove(input_path)
                     os.remove(raw_output_path)
                 except Exception:
                     pass
 
-
                 st.stop()
-
 
             # =================================================
             # PROGRESS BAR
@@ -501,15 +462,12 @@ else:
                 0
             )
 
-
             status_text = st.empty()
-
 
             frame_count = 0
 
-
             # =================================================
-            # PROCESS VIDEO
+            # PROCESS VIDEO FRAME BY FRAME
             # =================================================
 
             with st.spinner(
@@ -524,13 +482,11 @@ else:
 
                     ret, frame = cap.read()
 
-
                     if not ret:
                         break
 
-
                     # -----------------------------------------
-                    # YOLO
+                    # YOLO prediction
                     # -----------------------------------------
 
                     results = model.predict(
@@ -540,29 +496,22 @@ else:
                         verbose=False
                     )
 
-
                     result = results[0]
-
 
                     # -----------------------------------------
                     # Draw detections
                     # -----------------------------------------
 
-                    annotated_frame = (
-                        result.plot()
-                    )
-
+                    annotated_frame = result.plot()
 
                     # -----------------------------------------
-                    # Preserve ORIGINAL dimensions
+                    # Preserve original dimensions
                     # -----------------------------------------
 
                     if (
-                        annotated_frame.shape[1]
-                        != width
+                        annotated_frame.shape[1] != width
                         or
-                        annotated_frame.shape[0]
-                        != height
+                        annotated_frame.shape[0] != height
                     ):
 
                         annotated_frame = cv2.resize(
@@ -570,7 +519,6 @@ else:
                             (width, height),
                             interpolation=cv2.INTER_LINEAR
                         )
-
 
                     # -----------------------------------------
                     # Write frame
@@ -580,21 +528,18 @@ else:
                         annotated_frame
                     )
 
-
                     # -----------------------------------------
                     # Progress
                     # -----------------------------------------
 
                     frame_count += 1
 
-
                     if total_frames > 0:
 
                         progress = (
-                            frame_count
-                            / total_frames
+                            frame_count /
+                            total_frames
                         )
-
 
                         progress_bar.progress(
                             min(
@@ -603,35 +548,29 @@ else:
                             )
                         )
 
-
                         status_text.write(
                             f"Processing frame "
                             f"{frame_count} / "
                             f"{total_frames}"
                         )
 
-
             # =================================================
-            # RELEASE
+            # RELEASE RESOURCES
             # =================================================
 
             cap.release()
-
             writer.release()
-
 
             progress_bar.progress(
                 1.0
             )
 
-
             status_text.success(
                 "YOLO detection completed!"
             )
 
-
             # =================================================
-            # FFMPEG CONVERSION
+            # CONVERT TO WEB-FRIENDLY H.264
             # =================================================
 
             st.info(
@@ -639,20 +578,16 @@ else:
                 "for web playback..."
             )
 
-
             final_output = tempfile.NamedTemporaryFile(
                 delete=False,
                 suffix=".mp4"
             )
 
-
             final_output.close()
-
 
             final_output_path = (
                 final_output.name
             )
-
 
             # =================================================
             # GET FFMPEG
@@ -661,7 +596,6 @@ else:
             ffmpeg_path = (
                 imageio_ffmpeg.get_ffmpeg_exe()
             )
-
 
             # =================================================
             # FFMPEG COMMAND
@@ -677,7 +611,8 @@ else:
                 raw_output_path,
 
                 # --------------------------------------------
-                # Keep original dimensions
+                # Preserve dimensions while ensuring
+                # even dimensions required by yuv420p
                 # --------------------------------------------
 
                 "-vf",
@@ -688,7 +623,7 @@ else:
                 ),
 
                 # --------------------------------------------
-                # H264
+                # H.264
                 # --------------------------------------------
 
                 "-c:v",
@@ -718,7 +653,6 @@ else:
                 final_output_path
             ]
 
-
             # =================================================
             # RUN FFMPEG
             # =================================================
@@ -728,7 +662,6 @@ else:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
             )
-
 
             # =================================================
             # CHECK FFMPEG
@@ -740,34 +673,20 @@ else:
                     "Video conversion failed."
                 )
 
-
                 st.code(
                     process.stderr.decode(
                         errors="ignore"
                     )
                 )
 
-
                 try:
-
-                    os.remove(
-                        input_path
-                    )
-
-                    os.remove(
-                        raw_output_path
-                    )
-
-                    os.remove(
-                        final_output_path
-                    )
-
+                    os.remove(input_path)
+                    os.remove(raw_output_path)
+                    os.remove(final_output_path)
                 except Exception:
                     pass
 
-
                 st.stop()
-
 
             # =================================================
             # READ PROCESSED VIDEO
@@ -778,10 +697,7 @@ else:
                 "rb"
             ) as f:
 
-                processed_video = (
-                    f.read()
-                )
-
+                processed_video = f.read()
 
             # =================================================
             # DETECTION RESULT
@@ -791,490 +707,25 @@ else:
                 "🎾 Detection Result"
             )
 
-
-            # =================================================
-            # SHOW ORIGINAL VIDEO AGAIN
-            # =================================================
-
-            st.markdown(
-                "### 🎥 Original Video"
-            )
-
+            # ------------------------------------------------
+            # ONLY DETECTION VIDEO HERE
+            # ------------------------------------------------
 
             display_video(
-                original_video_bytes
+                processed_video,
+                max_height="75vh"
             )
-
-
-            # =================================================
-            # SHOW DETECTION VIDEO
-            # =================================================
-
-            st.markdown(
-                "### 🎾 Detection Video"
-            )
-
-
-            display_video(
-                processed_video
-            )
-
 
             # =================================================
             # DOWNLOAD
             # =================================================
 
             st.download_button(
-                label=(
-                    "⬇️ Download Detection Video"
-                ),
-
+                label="⬇️ Download Detection Video",
                 data=processed_video,
-
-                file_name=(
-                    "tennis_detection_result.mp4"
-                ),
-
+                file_name="tennis_detection_result.mp4",
                 mime="video/mp4"
             )
-
-
-            # =================================================
-            # CLEANUP
-            # =================================================
-
-            try:
-
-                os.remove(
-                    input_path
-                )
-
-                os.remove(
-                    raw_output_path
-                )
-
-                os.remove(
-                    final_output_path
-                )
-
-            except Exception:
-                pass
-            # =================================================
-            # CREATE RAW OUTPUT VIDEO
-            # =================================================
-
-            raw_output = tempfile.NamedTemporaryFile(
-                delete=False,
-                suffix=".mp4"
-            )
-
-
-            raw_output.close()
-
-
-            raw_output_path = (
-                raw_output.name
-            )
-
-
-            # =================================================
-            # VIDEO WRITER
-            # =================================================
-
-            fourcc = cv2.VideoWriter_fourcc(
-                *"mp4v"
-            )
-
-
-            writer = cv2.VideoWriter(
-                raw_output_path,
-                fourcc,
-                fps,
-                (width, height)
-            )
-
-
-            if not writer.isOpened():
-
-                st.error(
-                    "Could not create output video."
-                )
-
-                cap.release()
-
-                os.remove(
-                    input_path
-                )
-
-                os.remove(
-                    raw_output_path
-                )
-
-                st.stop()
-
-
-            # =================================================
-            # PROGRESS BAR
-            # =================================================
-
-            progress_bar = st.progress(
-                0
-            )
-
-
-            status_text = st.empty()
-
-
-            frame_count = 0
-
-
-            # =================================================
-            # PROCESS VIDEO FRAME BY FRAME
-            # =================================================
-
-            with st.spinner(
-                "Running YOLO detection..."
-            ):
-
-                while True:
-
-                    # -----------------------------------------
-                    # Read frame
-                    # -----------------------------------------
-
-                    ret, frame = cap.read()
-
-
-                    if not ret:
-                        break
-
-
-                    # -----------------------------------------
-                    # YOLO prediction
-                    # -----------------------------------------
-
-                    results = model.predict(
-                        source=frame,
-                        conf=confidence,
-                        imgsz=img_size,
-                        verbose=False
-                    )
-
-
-                    result = results[0]
-
-
-                    # -----------------------------------------
-                    # Draw bounding boxes
-                    # -----------------------------------------
-
-                    annotated_frame = (
-                        result.plot()
-                    )
-
-
-                    # -----------------------------------------
-                    # Keep original dimensions
-                    # -----------------------------------------
-
-                    if (
-                        annotated_frame.shape[1]
-                        != width
-                        or
-                        annotated_frame.shape[0]
-                        != height
-                    ):
-
-                        annotated_frame = cv2.resize(
-                            annotated_frame,
-                            (width, height),
-                            interpolation=cv2.INTER_LINEAR
-                        )
-
-
-                    # -----------------------------------------
-                    # Write processed frame
-                    # -----------------------------------------
-
-                    writer.write(
-                        annotated_frame
-                    )
-
-
-                    # -----------------------------------------
-                    # Update progress
-                    # -----------------------------------------
-
-                    frame_count += 1
-
-
-                    if total_frames > 0:
-
-                        progress = (
-                            frame_count
-                            / total_frames
-                        )
-
-
-                        progress_bar.progress(
-                            min(
-                                progress,
-                                1.0
-                            )
-                        )
-
-
-                        status_text.write(
-                            f"Processing frame "
-                            f"{frame_count} / "
-                            f"{total_frames}"
-                        )
-
-
-            # =================================================
-            # RELEASE VIDEO RESOURCES
-            # =================================================
-
-            cap.release()
-
-            writer.release()
-
-
-            progress_bar.progress(
-                1.0
-            )
-
-
-            status_text.success(
-                "YOLO detection completed!"
-            )
-
-
-            # =================================================
-            # CONVERT TO WEB-FRIENDLY FORMAT
-            # =================================================
-
-            st.info(
-                "Preparing detection video "
-                "for web playback..."
-            )
-
-
-            final_output = tempfile.NamedTemporaryFile(
-                delete=False,
-                suffix=".mp4"
-            )
-
-
-            final_output.close()
-
-
-            final_output_path = (
-                final_output.name
-            )
-
-
-            # =================================================
-            # GET FFMPEG
-            # =================================================
-
-            ffmpeg_path = (
-                imageio_ffmpeg.get_ffmpeg_exe()
-            )
-
-
-            # =================================================
-            # FFMPEG COMMAND
-            # =================================================
-
-            command = [
-
-                ffmpeg_path,
-
-                "-y",
-
-                "-i",
-                raw_output_path,
-
-                # --------------------------------------------
-                # Keep original dimensions
-                # --------------------------------------------
-
-                "-vf",
-                (
-                    "scale="
-                    "trunc(iw/2)*2:"
-                    "trunc(ih/2)*2"
-                ),
-
-                # --------------------------------------------
-                # H.264
-                # --------------------------------------------
-
-                "-c:v",
-                "libx264",
-
-                # --------------------------------------------
-                # Browser compatible pixel format
-                # --------------------------------------------
-
-                "-pix_fmt",
-                "yuv420p",
-
-                # --------------------------------------------
-                # Optimize MP4 for streaming
-                # --------------------------------------------
-
-                "-movflags",
-                "+faststart",
-
-                # --------------------------------------------
-                # Keep FPS
-                # --------------------------------------------
-
-                "-r",
-                str(fps),
-
-                final_output_path
-            ]
-
-
-            # =================================================
-            # RUN FFMPEG
-            # =================================================
-
-            process = subprocess.run(
-                command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-
-
-            # =================================================
-            # CHECK FFMPEG
-            # =================================================
-
-            if process.returncode != 0:
-
-                st.error(
-                    "Video conversion failed."
-                )
-
-
-                st.code(
-                    process.stderr.decode(
-                        errors="ignore"
-                    )
-                )
-
-
-                # --------------------------------------------
-                # Cleanup
-                # --------------------------------------------
-
-                try:
-
-                    os.remove(
-                        input_path
-                    )
-
-                    os.remove(
-                        raw_output_path
-                    )
-
-                    os.remove(
-                        final_output_path
-                    )
-
-                except Exception:
-                    pass
-
-
-                st.stop()
-
-
-            # =================================================
-            # READ FINAL VIDEO
-            # =================================================
-
-            with open(
-                final_output_path,
-                "rb"
-            ) as f:
-
-                processed_video = (
-                    f.read()
-                )
-
-
-            # =================================================
-            # DETECTION RESULT
-            # =================================================
-
-            st.subheader(
-                "🎾 Detection Result"
-            )
-
-
-            # =================================================
-            # ORIGINAL + DETECTION SIDE BY SIDE
-            # =================================================
-
-            col1, col2 = st.columns(
-                2
-            )
-
-
-            # -------------------------------------------------
-            # ORIGINAL VIDEO
-            # -------------------------------------------------
-
-            with col1:
-
-                st.markdown(
-                    "### 🎥 Original Video"
-                )
-
-
-                st.video(
-                    original_video_bytes
-                )
-
-
-            # -------------------------------------------------
-            # DETECTION VIDEO
-            # -------------------------------------------------
-
-            with col2:
-
-                st.markdown(
-                    "### 🎾 Detection Video"
-                )
-
-
-                st.video(
-                    processed_video
-                )
-
-
-            # =================================================
-            # DOWNLOAD BUTTON
-            # =================================================
-
-            st.download_button(
-                label=(
-                    "⬇️ Download Detection Video"
-                ),
-
-                data=processed_video,
-
-                file_name=(
-                    "tennis_detection_result.mp4"
-                ),
-
-                mime="video/mp4"
-            )
-
 
             # =================================================
             # CLEANUP
