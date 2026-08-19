@@ -1,222 +1,195 @@
-# 🎾 Tennis Ball & Player Detection
-
-Object Detection Final Project — Computer Vision Track
-**DOTPY Academy — DSA 2026**
+# Tennis Object Detection
 
 **YOLO11 · Transfer Learning · Image & Video Detection**
 
----
-
-## 📌 Project Overview
+## Project Overview
 
 This project is a YOLO11-based computer vision system designed to detect important objects in tennis match footage.
 
-The final model detects four classes in a single frame:
+The final model detects four classes:
 
-- 👤 Player
-- 🎾 Tennis Ball
-- 🥅 Net
-- 🎾 Court
+* Player
+* Tennis Ball
+* Net
+* Court
 
-The system can process both images and videos and return bounding boxes, class labels, and confidence scores for detected objects.
+The system supports both image and video inference and returns bounding boxes, class labels, and confidence scores.
 
-The project also includes a Streamlit web application for interactive image and video inference.
+A Streamlit web application is also included for interactive image and video detection.
 
----
-
-## 🎯 What It Does
-
-Given an image or video, the model detects:
-
-- Tennis players
-- Tennis balls
-- Tennis nets
-- Tennis court regions
-
-For each detected object, the model returns:
-
-- Bounding box
-- Class label
-- Confidence score
-
-Example:
-
-```text
-tennis ball   0.77   [x1, y1, x2, y2]
-player        0.91   [x1, y1, x2, y2]
-```
-
-## 🗂️ Dataset
+## Dataset
 
 ### Source
 
 The dataset was obtained from **TennisBallTracker** by Denica Tran through Roboflow Universe.
 
-- **Workspace:** denica-tran
-- **Project:** tennisballtracker
-- **Version:** 9
-- **Export format:** YOLOv8
-- **License:** CC BY 4.0
-- **Link:** [TennisBallTracker - v9 2023-10-05 1:16am](https://universe.roboflow.com/denica-tran/tennisballtracker/dataset/9)
+* **Workspace:** denica-tran
+* **Project:** tennisballtracker
+* **Version:** 9
+* **Export format:** YOLOv8
+* **License:** CC BY 4.0
+* **Source:** [TennisBallTracker - v9](https://universe.roboflow.com/denica-tran/tennisballtracker/dataset/9)
 
-Attribution is required under the dataset license.
+### Classes
 
-### Classes Used
+The original dataset contained 15 classes. It was filtered to four classes relevant to this project:
 
-The original dataset contained 15 classes.
-
-For this project, the dataset was filtered to the four classes relevant to tennis object detection:
-
-- player
-- tennis ball
-- net
-- court
+* player
+* tennis ball
+* net
+* court
 
 ### Dataset Split
 
-| Split | Images | Bounding Boxes |
-|---|---|---|
-| Train | 3,273 | 8,875 |
-| Validation | 457 | 1,250 |
-| Test | 229 | 609 |
+| Split      | Images | Bounding Boxes |
+| ---------- | -----: | -------------: |
+| Train      |  3,273 |          8,875 |
+| Validation |    457 |          1,250 |
+| Test       |    229 |            609 |
 
 ### Dataset Challenge
 
 The dataset has a significant class imbalance.
 
-The tennis ball has approximately 5–6 times fewer training instances than the other classes and is also the physically smallest and most motion-blur-prone object.
+The tennis ball represents only a small portion of the training annotations and is also the smallest and most motion-blurred object. Therefore, tennis ball detection is the main challenge of the project.
 
-This makes tennis ball detection the main challenge of the project.
+## Project Workflow
 
-## 🧠 Model
+### 1. Dataset Preparation
 
-The project uses YOLO11n (YOLO11 Nano) with transfer learning from COCO-pretrained weights.
+The TennisBallTracker dataset was downloaded and filtered to the four target classes:
 
-Two training runs were performed.
+* player
+* tennis ball
+* net
+* court
 
-| Setting | Run 1 — Baseline | Run 2 — Final |
-|---|---|---|
-| Base checkpoint | yolo11n.pt | yolo11n.pt |
-| Pretrained | COCO | COCO |
-| Epochs | 30 | 30 |
-| Image Size | 960 | 1280 |
-| Batch Size | 16 | 8 |
-| Early-stop Patience | 8 | 5 |
+### 2. Model Training
 
-### Why 1280?
+YOLO11n was fine-tuned using the prepared tennis dataset with COCO-pretrained weights.
 
-The tennis ball is the smallest object in the dataset.
+### 3. Model Evaluation
 
-Increasing the image size from 960 to 1280 preserves more pixels for small objects such as the tennis ball.
+The model was evaluated using:
 
-The trade-off is:
+* Precision
+* Recall
+* mAP@0.5
+* mAP@0.5:0.95
+* Confusion Matrix
 
-- Higher computational cost
-- Smaller batch size
-- Slower inference
+### 4. Testing
 
-The change was made deliberately to improve tennis ball detection.
+The final model was tested on unseen images from the held-out test split to examine real-world detection performance.
 
-## 📊 Final Model Results
+### 5. Deployment
 
-The final model was evaluated on the validation split containing 457 images using imgsz=1280.
+The trained `best.pt` model was integrated into a Streamlit application for image and video inference.
 
-| Class | Precision | Recall | mAP@0.5 | mAP@0.5:0.95 |
-|---|---|---|---|---|
-| All Classes | 0.893 | 0.861 | 0.880 | 0.668 |
-| Player | 0.944 | 0.947 | 0.974 | 0.751 |
-| Tennis Ball | 0.783 | 0.522 | 0.575 | 0.410 |
-| Net | 0.955 | 0.992 | 0.988 | 0.844 |
-| Court | 0.892 | 0.984 | 0.985 | 0.666 |
+## Model
 
-## 📈 Improvement from Run 1 to Run 2
+The project uses **YOLO11n (YOLO11 Nano)** with transfer learning from COCO-pretrained weights.
 
-Increasing the image size from 960 → 1280 improved the weakest class, tennis ball.
+| Setting                 | Value        |
+| ----------------------- | ------------ |
+| Base checkpoint         | `yolo11n.pt` |
+| Pretrained weights      | COCO         |
+| Epochs                  | 30           |
+| Image Size              | 1280         |
+| Batch Size              | 8            |
+| Early Stopping Patience | 5            |
 
-**Tennis Ball**
+## Model Results
 
-| Metric | Run 1 | Run 2 |
-|---|---|---|
-| Recall | 0.474 | 0.522 |
-| mAP@0.5 | 0.540 | 0.575 |
+The final model was evaluated on the validation split using `imgsz=1280`.
 
-This shows a measurable improvement in the detection of the smallest object in the dataset.
+| Class       | Precision | Recall | mAP@0.5 | mAP@0.5:0.95 |
+| ----------- | --------: | -----: | ------: | -----------: |
+| All Classes |     0.893 |  0.861 |   0.880 |        0.668 |
+| Player      |     0.944 |  0.947 |   0.974 |        0.751 |
+| Tennis Ball |     0.783 |  0.522 |   0.575 |        0.410 |
+| Net         |     0.955 |  0.992 |   0.988 |        0.844 |
+| Court       |     0.892 |  0.984 |   0.985 |        0.666 |
 
-The tennis ball remains the most challenging class, with a recall of 0.522.
+The model achieved an overall **mAP@0.5 of 0.880**.
 
-## 📊 Evaluation Visualizations
+The strongest results were obtained for the net, court, and player classes. Tennis ball detection remained the main weakness, with a recall of **0.522** and mAP@0.5 of **0.575**.
 
-- Confusion Matrix — `confusion_matrix.png`
-- Training Results — `results.png`
+## Evaluation Visualizations
 
-## 🧪 Testing on Unseen Images
+The project includes:
 
-The final model was also tested on the held-out test split, which was not used during training or validation.
+* `confusion_matrix.png`
+* `results.png`
 
-**Success Case**
+## Testing on Unseen Images
 
-A close-up frame where the tennis ball was relatively large in the image was correctly detected with a confidence of 0.77.
+The final model was also tested on the held-out test split.
 
-**Failure Case**
+### Success Case
 
-A wide broadcast shot was identified as a failure case where:
+A close-up frame where the tennis ball was relatively large was correctly detected with a confidence of 0.77.
 
-- The tennis ball was small and near the net.
-- A distant second player was also missed.
+### Failure Case
 
-This visually confirmed failure is consistent with the measured weakness of the model on small objects.
+A wide broadcast shot showed limitations in detecting small objects:
 
-## 💻 Streamlit Web Application
+* The tennis ball was small and close to the net.
+* A distant player was missed.
 
-The project includes a Streamlit application that allows users to interact with the trained YOLO11 model.
+This is consistent with the model's lower performance on small and difficult objects, particularly the tennis ball.
 
-### 🖼️ Image Detection
+## Streamlit Web Application
 
-Users can:
+The project includes a Streamlit application for interactive image and video inference.
 
-- Upload a tennis image.
-- Adjust the confidence threshold.
-- Select the inference image size.
-- Run object detection.
-- View the annotated image.
-- View detected classes and confidence scores.
-
-### 🎥 Video Detection
-
-The application also supports video detection.
+### Image Detection
 
 Users can:
 
-- Upload a tennis video.
-- View the original uploaded video.
-- Run YOLO11 detection frame by frame.
-- Generate an annotated detection video.
-- View the detection video directly inside the website.
-- Download the processed detection video.
+* Upload a tennis image.
+* Adjust the confidence threshold.
+* Select the inference image size.
+* Run object detection.
+* View the annotated image.
+* View detected classes and confidence scores.
 
-The detection video maintains the original aspect ratio and is converted to a browser-compatible MP4 format.
+### Video Detection
 
-## ⚙️ Inference Settings
+Users can:
 
-The application provides two configurable inference settings.
+* Upload a tennis video.
+* View the original video.
+* Run YOLO11 detection frame by frame.
+* Generate an annotated detection video.
+* View the processed video in the application.
+* Download the processed video.
 
-**Confidence Threshold**
+The output video preserves the original aspect ratio and is converted to a browser-compatible MP4 format.
+
+## Inference Settings
+
+### Confidence Threshold
 
 Default: `0.25`
 
-The confidence threshold controls the minimum confidence required for a detection to be displayed.
+Controls the minimum confidence required for a detection to be displayed.
 
-**Inference Image Size**
+### Inference Image Size
 
-Available options: `640`, `960`, `1280`
+Available options:
 
-The final model was trained using `imgsz = 1280`.
+* `640`
+* `960`
+* `1280`
 
-## 🔬 Detection Pipeline
+The final model was trained using `imgsz=1280`.
 
-**Image Pipeline**
+## Detection Pipeline
 
-```
+### Image Pipeline
+
+```text
 Input Image
      ↓
 YOLO11 Model
@@ -232,9 +205,9 @@ Confidence Scores
 Annotated Image
 ```
 
-**Video Pipeline**
+### Video Pipeline
 
-```
+```text
 Input Video
      ↓
 Extract Video Frames
@@ -245,32 +218,13 @@ Draw Bounding Boxes
      ↓
 Reconstruct Video
      ↓
-H.264 Conversion
+MP4 Conversion
      ↓
-Browser-Compatible MP4
-     ↓
-Display Detection Video
-     ↓
-Download Result
+Display / Download Result
 ```
+## Requirements
 
-## 🛠️ Technologies Used
-
-- Python
-- YOLO11
-- Ultralytics
-- OpenCV
-- Streamlit
-- Pillow
-- FFmpeg
-- NumPy
-- Google Colab
-
-## 📦 Requirements
-
-The deployment uses:
-
-```
+```text
 streamlit
 ultralytics
 opencv-python-headless
@@ -279,43 +233,43 @@ imageio-ffmpeg
 numpy<2
 ```
 
-Install all dependencies using:
+Install the dependencies with:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 🚀 How to Run
+## How to Run
 
-**1. Clone the Repository**
+### 1. Clone the Repository
 
 ```bash
 git clone <your-repository-url>
 ```
 
-**2. Enter the Project Directory**
+### 2. Enter the Project Directory
 
 ```bash
 cd tennisvision-yolo
 ```
 
-**3. Install Requirements**
+### 3. Install Requirements
 
 ```bash
 pip install -r requirements.txt
 ```
 
-**4. Run the Streamlit App**
+### 4. Run the Streamlit App
 
 ```bash
 streamlit run app.py
 ```
 
-The application will then open in your browser.
+The application will open in your browser.
 
-## 📁 Project Structure
+## Project Structure
 
-```
+```text
 tennisvision-yolo/
 │
 ├── README.md
@@ -326,61 +280,14 @@ tennisvision-yolo/
 ├── confusion_matrix.png
 ├── results.png
 │
-├── pred_1360f85d7fabbe56_jpg.rf....jpg
-├── pred_maxresdefault-2-_jpg.rf....jpg
-├── pred_videoplayback_mp4-0_jpg.rf....jpg
-├── pred_youtube-10_jpg.rf....jpg
-└── pred_youtube-13_jpg.rf....jpg
+└── prediction_images/
 ```
 
-## 📈 Model Performance Summary
+## Deployment
 
-The final model achieved:
+The trained model is integrated into a Streamlit web application.
 
-**Overall**
-```
-Precision       = 0.893
-Recall          = 0.861
-mAP@0.5         = 0.880
-mAP@0.5:0.95    = 0.668
-```
-
-**Best Performing Classes**
-
-The model performs particularly well on:
-
-- Player
-- Net
-- Court
-
-The strongest mAP@0.5 results are:
-
-```
-Net       = 0.988
-Court     = 0.985
-Player    = 0.974
-```
-
-**Main Challenge**
-
-The tennis ball remains the most difficult class:
-
-```
-Precision       = 0.783
-Recall          = 0.522
-mAP@0.5         = 0.575
-mAP@0.5:0.95    = 0.410
-```
-
-This is mainly related to its small size, motion blur, and class imbalance in the dataset.
-
-## 🌐 Deployment
-
-The final model is integrated into a Streamlit web application.
-
-The deployment uses:
-
-```
+```text
 GitHub Repository
         ↓
 Streamlit Cloud
@@ -391,83 +298,20 @@ best.pt
         ↓
 requirements.txt
         ↓
-Tennis Detection Web App
+Tennis Object Detection Web App
 ```
 
-**Live Demo**
+**Live Demo:** [Tennis Object Detection · Streamlit](https://tennisvision-yolo-6fbb4tct7tzf3wddcjkj6g.streamlit.app/)
 
-🔗 Streamlit App: [Tennis Object Detection · Streamlit](https://tennisvision-yolo-6fbb4tct7tzf3wddcjkj6g.streamlit.app/)
+## Future Improvements
 
-## 🎯 Application Features
+* Improve tennis ball detection for very small objects.
+* Increase the number of tennis ball training examples.
+* Estimate tennis ball trajectory.
+* Analyze player movement.
+* Detect court lines.
+* Develop advanced tennis performance analytics.
 
-| Feature | Status |
-|---|---|
-| Image Upload | ✅ |
-| Image Detection | ✅ |
-| Video Upload | ✅ |
-| Video Detection | ✅ |
-| Player Detection | ✅ |
-| Tennis Ball Detection | ✅ |
-| Net Detection | ✅ |
-| Court Detection | ✅ |
-| Confidence Threshold | ✅ |
-| Inference Image Size | ✅ |
-| Detection Video Preview | ✅ |
-| Download Detection Video | ✅ |
-| Browser-Compatible MP4 | ✅ |
-
-## 🔮 Future Improvements
-
-Possible future improvements include:
-
-- Improving tennis ball detection for very small objects.
-- Increasing the number of tennis ball training examples.
-- Object tracking across video frames.
-- Tennis ball trajectory estimation.
-- Player movement analysis.
-- Court line detection.
-- Hit detection.
-- Serve analysis.
-- Real-time webcam inference.
-- Advanced tennis performance analytics.
-
-## 📚 Project Workflow
-
-**1. Dataset Preparation**
-
-The TennisBallTracker dataset was downloaded and filtered to the four target classes:
-
-- player
-- tennis ball
-- net
-- court
-
-**2. Model Training**
-
-YOLO11n was fine-tuned using the prepared tennis dataset.
-
-**3. Model Evaluation**
-
-The model was evaluated using:
-
-- Precision
-- Recall
-- mAP@0.5
-- mAP@0.5:0.95
-- Confusion Matrix
-
-**4. Model Improvement**
-
-The input resolution was increased from 960 → 1280 to improve small-object detection.
-
-**5. Unseen Testing**
-
-The final model was tested on the held-out test split.
-
-**6. Deployment**
-
-The trained `best.pt` model was integrated into a Streamlit application for image and video inference.
-
-## 👩‍💻 Author
+## Author
 
 Sarah Tawfiq
